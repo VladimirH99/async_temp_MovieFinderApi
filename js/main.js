@@ -2,7 +2,14 @@ let moviesList = null;
 let inputSearch = null;
 let triggerMode = false;
 
-const createElement = (type, attrs, container) => {
+const createElement = ({
+    type,
+    attrs,
+    container = null,
+    position = 'append',
+    evt = null,
+    handler = null
+}) => {
     const el = document.createElement(type);
 
     Object.keys(attrs).forEach(key => {
@@ -12,13 +19,17 @@ const createElement = (type, attrs, container) => {
             el.innerHTML = attrs[key];
         }
     });
-    if (container) container.append(el);
+    if (container && position === 'append') container.append(el);
+    if (container && position === 'prepend') container.prepend(el);
+    if (evt && handler && typeof handler === 'function') el.addEventListener(evt, handler);
     return el;
 }
 
 const createStyle = () => {
-    createElement('style', {
-        innerText: `
+    createElement({
+        type: 'style',
+        attrs: {
+            innerText: `
         * {
         box-sizing: border-box;
     }
@@ -76,70 +87,101 @@ const createStyle = () => {
         margin-top: -18px;
         margin-left: 25px;
     }`
-    }, document.head);
+        },
+        container: document.head
+    });
 };
 
-const triggerModeHandler = () => triggerMode = !triggerMode;
-
-const createSearchBox = (container) => {
-
-    createElement('h1', {
-        innerText: 'Приложение для поиска фильмов'
-    }, container);
-
-    const searchBox = createElement('div', { class: 'search' }, container);
-
-    createElement('label', {
-        class: 'search__label-input',
-        for: 'search',
-        innerText: 'Поиск фильмов'
-    }, searchBox);
-
-
-    createElement('input', {
-        class: 'search__input',
-        id: 'search',
-        type: 'search',
-        placeholder: 'Введите фильм...'
-    }, searchBox);
-
-
-    const el = createElement('input', {
-        class: 'search__checkbox',
-        id: 'checkbox',
-        type: 'checkbox'
-    }, searchBox);
-    el.addEventListener('click', triggerModeHandler);
-
-    createElement('label', {
-        class: 'search__label-checkbox',
-        for: 'checkbox',
-        innerText: 'Добавлять фильмы к существующему списку'
-    }, searchBox);
-
-};
 
 const createMarkup = () => {
-    const container = createElement('div', { class: 'container' });
+    const container = createElement({
+        type: 'div',
+        attrs: { class: 'container' },
+        container: document.body,
+        position: 'prepend'
+    });
 
-    createSearchBox(container);
+    createElement({
+        type: 'h1',
+        attrs: { innerText: 'Приложение для поиска фильмов' },
+        container
+    });
 
-    createElement('div', { class: 'movies' }, container);
-    // ! реализовать prepend //
-    document.body.prepend(container);
+    const searchBox = createElement({
+        type: 'div',
+        attrs: { class: 'search' },
+        container
+    });
 
-    moviesList = document.querySelector('.movies');
-    inputSearch = document.querySelector('#search');
+    createElement({
+        type: 'label',
+        attrs: {
+            class: 'search__label-input',
+            for: 'search',
+            innerText: 'Поиск фильмов'
+        },
+        container: searchBox
+    });
+
+
+    inputSearch = createElement({
+        type: 'input',
+        attrs: {
+            class: 'search__input',
+            id: 'search',
+            type: 'search',
+            placeholder: 'Введите фильм...'
+        },
+        container: searchBox
+    });
+
+
+    createElement({
+        type: 'input',
+        attrs: {
+            class: 'search__checkbox',
+            id: 'checkbox',
+            type: 'checkbox'
+        },
+        container: searchBox,
+        evt: 'click',
+        handler: () => triggerMode = !triggerMode;
+    });
+
+
+    createElement({
+        type: 'label',
+        attrs: {
+            class: 'search__label-checkbox',
+            for: 'checkbox',
+            innerText: 'Добавлять фильмы к существующему списку'
+        },
+        container: searchBox
+    });
+
+    moviesList = createElement({
+        type: 'div',
+        attrs: { class: 'movies' },
+        container
+    });
 };
 
 const addMovieToList = (movie) => {
-    const item = createElement('div', { class: 'movie' }, moviesList);
-    createElement('img', {
-        src: /^(http|https):\/\//i.test(movie.Poster) ? movie.Poster : 'assets/img/no_image.jpg',
-        class: 'movie__image',
-        alt: movie.Title,
-        title: movie.Title
-    }, item);
+    const item = createElement({
+        type: 'div',
+        attrs: { class: 'movie' },
+        container: moviesList
+    });
+    createElement({
+        type: 'img',
+        attrs: {
+            src: /^(http|https):\/\//i.test(movie.Poster) ? movie.Poster : 'assets/img/no_image.jpg',
+            class: 'movie__image',
+            alt: movie.Title,
+            title: movie.Title
+        },
+        container: item
+    });
 }
 
 
@@ -150,10 +192,10 @@ const getData = (url) => fetch(url)
         return json.Search;
     });
 
-const delay = (() => {
-    let timer = 0;
+const debounce = (() => {
+    let timer = null;
     return (cb, ms) => {
-        clearTimeout(timer);
+        if (timer !== null) clearTimeout(timer);
         timer = setTimeout(cb, ms);
     };
 })();
@@ -167,7 +209,7 @@ createMarkup();
 createStyle();
 
 inputSearch.addEventListener('keyup', (e) => {
-    delay(() => {
+    debounce(() => {
         const searchString = e.target.value.trim();
         if (searchString && searchString.length > 3 && searchString !== searchLast) {
 
