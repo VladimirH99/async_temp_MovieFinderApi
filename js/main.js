@@ -145,7 +145,7 @@ const createMarkup = () => {
         },
         container: searchBox,
         evt: 'click',
-        handler: () => triggerMode = !triggerMode;
+        handler: () => triggerMode = !triggerMode
     });
 
 
